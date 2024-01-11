@@ -1,0 +1,44 @@
+Line Number,Question Title,Question Description,Answer Code
+1,What is the proper way of doing event handling in C++?,"I have an application that needs to respond to certain events in the following manner: This would be running is some thread. In some other threads, operations would create and fire the Events.  How do I get these Events to reach the above method/class? What is the proper strategy or architecture for implementing event handling in C++? ","void consumer_thread_function(EventQueue::Ptr event_queue)
+try {
+    for(;;) {
+        EventQueue::Event event(event_queue->consume()); // get a new event 
+        event(); // and invoke it
+    }
+}
+catch(EventQueue::Stopped&) {
+}
+
+void some_work(int n) {
+    std::cout << ""thread "" << boost::this_thread::get_id() << "" : "" << n << '\n';
+    boost::this_thread::sleep(boost::get_system_time() + boost::posix_time::milliseconds(500));
+}
+
+int main()
+{
+    some_work(1);
+
+    // create an event queue that can be shared between multiple produces and multiple consumers
+    EventQueue::Ptr queue(new EventQueue);
+
+    // create two worker thread and pass them a pointer to queue
+    boost::thread worker_thread_1(consumer_thread_function, queue);
+    boost::thread worker_thread_2(consumer_thread_function, queue);
+
+    // tell the worker threads to do something
+    queue->produce(boost::bind(some_work, 2));
+    queue->produce(boost::bind(some_work, 3));
+    queue->produce(boost::bind(some_work, 4));
+
+    // tell the queue to stop
+    queue->stop(true);
+
+    // wait till the workers thread stopped
+    worker_thread_2.join();
+    worker_thread_1.join();
+
+    some_work(5);
+}
+"
+5,Why does the implementation of std::to_string create a buffer 4 times the size of the type?,"C++11 introduces std::to_string, so I took a look at one implementation: it calls vsnprintf internally.  Okay, but why does it always set the size parameter as 4 times the size of the type?","Decimals = ceil(8 * Size / 3.32) = ceil(2.41 * Size).
+"
